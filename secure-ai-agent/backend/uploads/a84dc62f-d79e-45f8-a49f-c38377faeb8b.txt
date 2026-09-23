@@ -1,0 +1,33 @@
+Stack data structure is used for recursion process
+
+Inorder gives sorted(ascending) output in BST
+
+Internal nodes=n-1,leaf nodes=n,total=2n-1 nodes
+
+In single threaded binary tree the null right pointer points to inorder succesor
+
+In double threaded binary tree the null left pointer points to inorder predecessor
+
+If there were n nodes there will be n+1  null pointers
+
+IF ARRAY INDEXING STARTS FROM 1
+THEN,
+For array of elements in BST the left element to will be [2*i+1]
+right node element to root will be [2*i+2]
+The parent to node will be [i-1/2]
+else
+[2*i]
+[2*i+1]
+[i/2]
+
+If number of nodes are n then number of subarrays can be formed from the array is n(n+1)/2
+
+If the 1-D array is rotated right by k positions then first rotate elements after k positions then rotate n-k
+elements then rotate entire array
+
+minimum number of comparisons required to find both the minimum and maximum element in a 1D array of size n is 3n/2-1
+that is n/2+(n/2-1)+(n/2-1)
+
+
+ 
+

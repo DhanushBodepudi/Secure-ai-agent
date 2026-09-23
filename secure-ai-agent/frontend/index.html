@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aperture — Secure Image Studio</title>
+<link rel="stylesheet" href="style.css" />
+<!-- face-api.js: runs face detection/embedding entirely in the browser -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+
+  <!-- ===================== LOCK SCREEN ===================== -->
+  <section id="lock-screen" class="lock-screen">
+    <div class="lock-card">
+      <div class="lock-mark">◆</div>
+      <h1>Aperture</h1>
+      <p class="lock-sub" id="lock-status">Looking for a familiar face…</p>
+
+      <div class="camera-frame">
+        <video id="camera-feed" autoplay muted playsinline></video>
+        <div class="scan-line"></div>
+      </div>
+
+      <button id="use-password-btn" class="link-btn">Use password instead</button>
+
+<form id="password-form" class="password-form hidden">
+  <div class="input-with-mic">
+    <input
+      type="password"
+      id="password-input"
+      placeholder="Enter password"
+      autocomplete="current-password"
+    />
+    <button type="button" id="password-mic-btn" class="mic-btn" title="Speak password">🎤</button>
+  </div>
+  <button type="submit" class="primary-btn">Unlock</button>
+  <p id="password-error" class="error-text"></p>
+</form>
+
+      <form id="enroll-form" class="password-form hidden">
+        <p class="lock-sub">No face on file yet. Set your password first, then we'll learn your face.</p>
+        <input type="password" id="enroll-password-input" placeholder="Choose a password" autocomplete="new-password" />
+        <button type="button" id="enroll-face-btn" class="primary-btn">Capture my face</button>
+        <p id="enroll-error" class="error-text"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== MAIN APP ===================== -->
+  <section id="app-shell" class="app-shell hidden">
+
+    <aside class="sidebar">
+ <div class="sidebar-header">
+  <span class="brand">◆ Aperture</span>
+  <button id="new-chat-btn" class="new-chat-btn" title="New chat">＋ New chat</button>
+  <input type="text" id="search-input" class="search-input" placeholder="Search chats…" />
+</div>
+<div id="chat-list" class="chat-list"></div>
+<div id="search-results" class="chat-list hidden"></div>
+    <div class="sidebar-footer">
+  <button id="monitor-toggle-btn" class="link-btn subtle">Start monitoring</button>
+  <button id="lock-app-btn" class="link-btn subtle">Lock screen</button>
+</div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="main-header">
+        <h2 id="current-chat-title">New chat</h2>
+      </header>
+<video id="monitor-feed" autoplay muted playsinline class="monitor-feed"></video>
+      <div id="message-list" class="message-list">
+        <div class="empty-state">
+          <p>Describe an image, and it'll appear here.</p>
+        </div>
+      </div>
+
+<div id="attachment-chip" class="attachment-chip hidden">
+  <span id="attachment-icon">📄</span>
+  <span id="attachment-name"></span>
+  <button id="remove-attachment-btn" class="chip-remove" title="Remove">✕</button>
+</div>
+<div class="composer">
+  <select id="mode-select" class="icon-btn">
+    <option value="chat">💬 Chat</option>
+    <option value="image">🖼️ Image</option>
+  </select>
+  <button id="attach-btn" class="icon-btn" title="Attach a file">📎</button>
+  <input type="file" id="file-input" class="hidden" />
+  <input
+    type="text"
+    id="prompt-input"
+    placeholder="Ask a question, or describe an image…"
+  />
+  <button id="prompt-mic-btn" class="icon-btn" title="Speak your prompt">🎤</button>
+  <button id="send-btn" class="primary-btn">Send</button>
+</div>
+      <p id="upload-status" class="upload-status"></p>
+    </main>
+  </section>
+
+  <!-- ===================== ELEVATION MODAL (for code-file uploads) ===================== -->
+  <div id="elevate-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Verification required</h3>
+      <p id="elevate-reason" class="modal-text"></p>
+      <input type="password" id="elevate-password-input" placeholder="Enter password" />
+      <div class="modal-actions">
+        <button id="elevate-cancel-btn" class="ghost-btn">Cancel</button>
+        <button id="elevate-confirm-btn" class="primary-btn">Verify & upload</button>
+      </div>
+      <p id="elevate-error" class="error-text"></p>
+    </div>
+  </div>
+
+ <script defer src="app.js"></script>
+</body>
+</html>

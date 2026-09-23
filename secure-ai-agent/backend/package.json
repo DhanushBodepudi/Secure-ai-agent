@@ -1,0 +1,27 @@
+{
+  "name": "secure-ai-agent-backend",
+  "version": "1.0.0",
+  "description": "Backend for a secure AI image generation agent with face-lock, password auth, gated uploads, and chat history.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "init-db": "node db.js"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^14.0.2",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "file-type": "^16.5.4",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.12.2",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^7.10.0",
+    "uuid": "^9.0.1"
+  }
+}
