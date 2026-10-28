@@ -1,2 +1,15 @@
+# Dependencies & Environment
 .env
 node_modules/
+
+# SQLite databases & WAL
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Runtime uploads, created files, and security captures
+**/uploads/security-captures/
+**/uploads/created-files/
+secure-ai-agent/backend/uploads/6aa2f7b0-2c88-48d0-bc17-818af8ddcd17.png

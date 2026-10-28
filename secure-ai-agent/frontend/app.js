@@ -1,7 +1,8 @@
 // app.js
 // Frontend logic: camera capture + face embedding (via face-api.js, entirely
-// client-side), talking to the backend for the real auth decision, chat
-// management, and the upload flow including the elevation modal.
+// client-side), liveness check, talking to the backend for the real auth
+// decision, chat management, uploads with elevation, voice input, search,
+// presence monitoring, and chat sharing.
 
 const API_BASE = "http://localhost:4000/api";
 
@@ -9,11 +10,11 @@ const API_BASE = "http://localhost:4000/api";
 // State
 // ---------------------------------------------------------------------------
 let sessionToken = null;
-let elevatedToken = null; // present only for ~15 min after password re-verification
+let elevatedToken = null;
 let currentChatId = null;
 let pendingUploadFile = null;
-let pendingAttachment = null; // holds the selected File until Send is clicked
-let pendingAction = null;     // 'upload' or 'analyze' — set when elevation is needed
+let pendingAttachment = null;
+let pendingAction = null;
 let monitorStream = null;
 let monitorInterval = null;
 let isMonitoring = false;
@@ -23,10 +24,16 @@ let promptRecognizer = null;
 let promptListening = false;
 let passwordRecognizer = null;
 let passwordListening = false;
+let faceScanTimeout = null;
+let addFaceStream = null;
 
 // ---------------------------------------------------------------------------
 // Element refs
 // ---------------------------------------------------------------------------
+const securityLogBtn = document.getElementById("security-log-btn");
+const securityLogModal = document.getElementById("security-log-modal");
+const securityLogList = document.getElementById("security-log-list");
+const securityLogCloseBtn = document.getElementById("security-log-close-btn");
 const searchInput = document.getElementById("search-input");
 const searchResultsEl = document.getElementById("search-results");
 
@@ -67,6 +74,13 @@ const elevateConfirmBtn = document.getElementById("elevate-confirm-btn");
 const elevateCancelBtn = document.getElementById("elevate-cancel-btn");
 const elevateError = document.getElementById("elevate-error");
 
+const addFaceBtn = document.getElementById("add-face-btn");
+const addFaceModal = document.getElementById("add-face-modal");
+const addFaceFeed = document.getElementById("add-face-feed");
+const addFaceError = document.getElementById("add-face-error");
+const addFaceCancelBtn = document.getElementById("add-face-cancel-btn");
+const addFaceCaptureBtn = document.getElementById("add-face-capture-btn");
+
 // ---------------------------------------------------------------------------
 // Boot sequence
 // ---------------------------------------------------------------------------
@@ -101,27 +115,49 @@ async function startCameraOnly() {
     showPasswordForm();
   }
 }
+
+async function startCameraAndAttemptFaceLogin() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    cameraFeed.srcObject = stream;
+    setTimeout(attemptFaceLogin, 1200);
+
+    // If no face has been successfully matched within 8 seconds total,
+    // show the unauthorized message and fall back to password.
+    faceScanTimeout = setTimeout(() => {
+      if (!sessionToken) {
+        showUnauthorizedMessage();
+      }
+    }, 8000);
+  } catch (err) {
+    lockStatus.textContent = "Camera unavailable — use your password.";
+    showPasswordForm();
+  }
+}
+
+function showUnauthorizedMessage() {
+  lockStatus.innerHTML = `<span class="unauthorized-text">You are not an authorized user</span>`;
+  showPasswordForm();
+}
+
 // ---------------------------------------------------------------------------
-// Liveness check (random head-turn challenge) — asks for a randomly chosen
-// direction each login, so a static photo (can't move) or a pre-recorded
-// video (unlikely to match the random direction at the right moment) can't
-// easily pass.
+// Liveness check (random head-turn challenge)
 // ---------------------------------------------------------------------------
 
 const TURN_CHECK_DURATION_MS = 6000;
-const TURN_THRESHOLD = 0.12; // how far the nose must shift, as a fraction of face width
+const TURN_THRESHOLD = 0.12;
 
 function getNoseOffset(landmarks) {
   const nose = landmarks.getNose();
   const leftEye = landmarks.getLeftEye();
   const rightEye = landmarks.getRightEye();
 
-  const noseTip = nose[3]; // tip of the nose
+  const noseTip = nose[3];
   const eyeMidX = (leftEye[0].x + rightEye[3].x) / 2;
   const faceWidth = Math.abs(rightEye[3].x - leftEye[0].x);
 
   if (faceWidth === 0) return 0;
-  return (noseTip.x - eyeMidX) / faceWidth; // negative = turned left, positive = turned right
+  return (noseTip.x - eyeMidX) / faceWidth;
 }
 
 async function waitForHeadTurn(videoEl, direction) {
@@ -142,9 +178,6 @@ async function waitForHeadTurn(videoEl, direction) {
       if (!detection) return;
 
       const offset = getNoseOffset(detection.landmarks);
-
-      // Camera image is mirrored (scaleX(-1) in CSS), so a viewer's "left"
-      // corresponds to a positive offset here, and "right" to negative.
       const turnedLeft = offset > TURN_THRESHOLD;
       const turnedRight = offset < -TURN_THRESHOLD;
 
@@ -159,16 +192,6 @@ async function waitForHeadTurn(videoEl, direction) {
 function pickRandomDirection() {
   return Math.random() < 0.5 ? "left" : "right";
 }
-async function startCameraAndAttemptFaceLogin() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    cameraFeed.srcObject = stream;
-    setTimeout(attemptFaceLogin, 1200);
-  } catch (err) {
-    lockStatus.textContent = "Camera unavailable — use your password.";
-    showPasswordForm();
-  }
-}
 
 async function attemptFaceLogin() {
   const detection = await faceapi
@@ -178,7 +201,7 @@ async function attemptFaceLogin() {
 
   if (!detection) {
     lockStatus.textContent = "No face detected — try again or use your password.";
-    return; // leave camera running; user can retry or switch to password
+    return;
   }
 
   // --- Liveness check: require a randomly-chosen head turn ---
@@ -193,7 +216,6 @@ async function attemptFaceLogin() {
 
   lockStatus.textContent = "Verifying…";
 
-  // Take a fresh detection after the turn check, since some time has passed.
   const freshDetection = await faceapi
     .detectSingleFace(cameraFeed, new faceapi.TinyFaceDetectorOptions())
     .withFaceLandmarks()
@@ -214,14 +236,18 @@ async function attemptFaceLogin() {
   const data = await res.json();
 
   if (res.ok && data.success) {
+    if (faceScanTimeout) clearTimeout(faceScanTimeout);
     sessionToken = data.token;
     lockStatus.textContent = "Welcome back.";
     setTimeout(enterApp, 400);
-  } else {
-    lockStatus.textContent = "Face not recognized.";
+  }   else {
+    if (faceScanTimeout) clearTimeout(faceScanTimeout);
+    captureFrameUnauth(cameraFeed); // save evidence before showing the password fallback
+    lockStatus.textContent = data.error || "You are an unauthorized user.";
     showPasswordForm();
   }
 }
+
 function showPasswordForm() {
   passwordForm.classList.remove("hidden");
   passwordInput.focus();
@@ -314,6 +340,59 @@ lockAppBtn.addEventListener("click", () => {
   passwordForm.classList.add("hidden");
   passwordInput.value = "";
   init();
+});
+
+// ---------------------------------------------------------------------------
+// Add another enrolled face (while already logged in)
+// ---------------------------------------------------------------------------
+
+addFaceBtn.addEventListener("click", async () => {
+  addFaceError.textContent = "";
+  addFaceModal.classList.remove("hidden");
+  try {
+    addFaceStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    addFaceFeed.srcObject = addFaceStream;
+  } catch (err) {
+    addFaceError.textContent = "Camera unavailable.";
+  }
+});
+
+function closeAddFaceModal() {
+  if (addFaceStream) addFaceStream.getTracks().forEach((t) => t.stop());
+  addFaceStream = null;
+  addFaceModal.classList.add("hidden");
+}
+
+addFaceCancelBtn.addEventListener("click", closeAddFaceModal);
+
+addFaceCaptureBtn.addEventListener("click", async () => {
+  addFaceError.textContent = "";
+
+  const detection = await faceapi
+    .detectSingleFace(addFaceFeed, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    addFaceError.textContent = "No face detected. Try again with better lighting.";
+    return;
+  }
+
+  const embedding = Array.from(detection.descriptor);
+
+  const res = await fetch(`${API_BASE}/auth/enroll-face`, {
+    method: "POST",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ embedding }),
+  });
+
+  if (res.ok) {
+    uploadStatus.textContent = "New face added — they can now log in too.";
+    closeAddFaceModal();
+  } else {
+    const data = await res.json();
+    addFaceError.textContent = data.error || "Could not save face.";
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -434,18 +513,33 @@ function toggleChatMenu(chat, chatEl) {
     loadChats();
   });
 
+  const shareItem = document.createElement("div");
+  shareItem.className = "chat-context-item";
+  shareItem.textContent = "Share";
+shareItem.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  const res = await fetch(`${API_BASE}/chats/${chat.id}/share`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  const { shareToken } = await res.json();
+  const shareUrl = `${window.location.origin}/shared?token=${shareToken}`;
+
+  await navigator.clipboard.writeText(shareUrl);
+  uploadStatus.textContent = "Share link copied. Anything that looked like a password, email, or key has been automatically masked in the shared version.";
+  menu.remove();
+});
+
   menu.appendChild(pinItem);
+  menu.appendChild(shareItem);
   menu.appendChild(renameItem);
   menu.appendChild(deleteItem);
 
-  // Append to <body> (not inside the scrollable chat-list) and position it
-  // using the clicked item's actual on-screen coordinates, so the sidebar's
-  // overflow:auto scroll area can't clip it.
   document.body.appendChild(menu);
   const rect = chatEl.getBoundingClientRect();
   menu.style.position = "fixed";
   menu.style.top = `${rect.bottom + 4}px`;
-  menu.style.left = `${rect.right - 130}px`; // align right edge to the item
+  menu.style.left = `${rect.right - 130}px`;
 
   setTimeout(() => {
     document.addEventListener("click", function closeMenu() {
@@ -491,6 +585,8 @@ async function openChat(chatId, title) {
 // ---------------------------------------------------------------------------
 
 function renderMessage(msg) {
+   const emptyState = messageListEl.querySelector(".empty-state");
+  if (emptyState) emptyState.remove();
   const wrapper = document.createElement("div");
   wrapper.className = `message-wrapper ${msg.role}`;
   wrapper.dataset.messageId = msg.id;
@@ -505,11 +601,21 @@ function renderMessage(msg) {
   }
 
   if (msg.image_path) {
-    const img = document.createElement("img");
-    img.src = msg.image_path.startsWith("http")
+    const fullUrl = msg.image_path.startsWith("http")
       ? msg.image_path
       : `http://localhost:4000${msg.image_path}`;
-    el.appendChild(img);
+
+    if (/\.(png|jpe?g|webp|gif)$/i.test(msg.image_path)) {
+      const img = document.createElement("img");
+      img.src = fullUrl;
+      el.appendChild(img);
+    } else {
+      const link = document.createElement("a");
+      link.href = fullUrl;
+      link.className = "file-download";
+      link.textContent = "⬇ Download " + decodeURIComponent(msg.image_path.split("/").pop());
+      el.appendChild(link);
+    }
   }
 
   const deleteBtn = document.createElement("button");
@@ -544,9 +650,9 @@ function formatAssistantText(text) {
   if (!text) return "";
 
   const cleaned = text
-    .replace(/^#{1,6}\s*/gm, "")     // strip leading #, ##, ### etc.
-    .replace(/\*\*(.*?)\*\*/g, "$1") // strip bold markers, keep the text
-    .replace(/^-{3,}$/gm, "");       // strip standalone --- divider lines
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^-{3,}$/gm, "");
 
   const lines = cleaned.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
 
@@ -617,15 +723,34 @@ async function sendMessage() {
     return;
   }
 
-  const endpoint = mode === "image" ? "/generate" : "/chat";
+  const endpoints = {
+    image: "/generate",
+    chat: "/chat",
+    pdf: "/create/pdf",
+    ppt: "/create/ppt",
+    code: "/create/code",
+    zip: "/create/zip",
+  };
+  const endpoint = endpoints[mode] || "/chat";
+
+  if (["pdf", "ppt", "code", "zip"].includes(mode)) {
+    uploadStatus.textContent = `Creating your ${mode.toUpperCase()}… this can take 10–30 seconds.`;
+  }
+
   const genRes = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ prompt: text, chatId: currentChatId }),
   });
-  const { message: assistantMsg } = await genRes.json();
-  renderMessage(assistantMsg);
+  const genData = await genRes.json();
 
+  if (!genRes.ok || !genData.message) {
+    uploadStatus.textContent = genData.error || "Something went wrong. Please try again.";
+    return;
+  }
+
+  uploadStatus.textContent = "";
+  renderMessage(genData.message);
   loadChats();
 }
 
@@ -744,7 +869,44 @@ elevateConfirmBtn.addEventListener("click", async () => {
 // ---------------------------------------------------------------------------
 // Presence monitoring (optional, toggled after login)
 // ---------------------------------------------------------------------------
+// Captures the current frame from a given video element as a base64 image
+// and sends it to the backend to be saved as evidence.
+function captureAndSaveFrame(videoEl) {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth || 320;
+    canvas.height = videoEl.videoHeight || 240;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL("image/png");
 
+    fetch(`${API_BASE}/security/capture`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ imageData }),
+    });
+  } catch (err) {
+    console.error("Failed to capture frame:", err);
+  }
+}
+function captureFrameUnauth(videoEl) {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = videoEl.videoWidth || 320;
+    canvas.height = videoEl.videoHeight || 240;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL("image/png");
+
+    fetch(`${API_BASE}/security/capture-unauth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageData }),
+    });
+  } catch (err) {
+    console.error("Failed to capture frame:", err);
+  }
+}
 monitorToggleBtn.addEventListener("click", () => {
   if (isMonitoring) {
     stopMonitoring();
@@ -753,6 +915,7 @@ monitorToggleBtn.addEventListener("click", () => {
   }
 });
 
+
 async function startMonitoring() {
   try {
     monitorStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -760,6 +923,7 @@ async function startMonitoring() {
     isMonitoring = true;
     monitorToggleBtn.textContent = "Stop monitoring";
     monitorInterval = setInterval(checkPresence, 5000);
+    startShoulderSurfDetection(); // add this line
   } catch (err) {
     uploadStatus.textContent = "Camera unavailable for monitoring.";
   }
@@ -774,6 +938,7 @@ function stopMonitoring() {
   monitorStream = null;
   isMonitoring = false;
   monitorToggleBtn.textContent = "Start monitoring";
+  stopShoulderSurfDetection(); // add this line
 }
 
 async function checkPresence() {
@@ -786,10 +951,15 @@ async function checkPresence() {
 
   if (!detection) {
     if (!awayTimer) {
-      awayTimer = setTimeout(() => {
+      awayTimer = setTimeout(async () => {
+        // Lock the OS first, while the session token is still valid.
+        await fetch(`${API_BASE}/lock-system`, {
+          method: "POST",
+          headers: authHeaders(),
+        });
         stopMonitoring();
         lockAppBtn.click();
-      }, 50000);
+      }, 10000);
     }
     return;
   }
@@ -812,6 +982,8 @@ async function checkPresence() {
   const data = await res.json();
 
   if (!data.isMatch) {
+    // A different face is in frame — capture evidence, then lock immediately.
+    captureAndSaveFrame(monitorFeed);
     stopMonitoring();
     lockAppBtn.click();
   }
@@ -832,7 +1004,6 @@ function createRecognizer() {
   return recognizer;
 }
 
-// --- Voice for prompts ---
 promptMicBtn.addEventListener("click", () => {
   if (promptListening) {
     promptListening = false;
@@ -882,7 +1053,6 @@ promptMicBtn.addEventListener("click", () => {
   promptRecognizer.start();
 });
 
-// --- Voice for password ---
 passwordMicBtn.addEventListener("click", () => {
   if (passwordListening) {
     passwordListening = false;
@@ -990,6 +1160,161 @@ async function runSearch(query) {
     searchResultsEl.appendChild(el);
   });
 }
+// ---------------------------------------------------------------------------
+// Shoulder-surfing detection — a lightweight, browser-based approximation:
+// detects multiple faces, assumes the largest is the primary user, and flags
+// any other face whose head is oriented toward the screen for a sustained
+// number of frames.
+// ---------------------------------------------------------------------------
+
+let shoulderSurfInterval = null;
+let shoulderSurfActive = false;
+let lookingStreak = 0;
+const LOOKING_STREAK_THRESHOLD = 4; // consecutive detections before alerting (~2 seconds at 500ms interval)
+const OBSERVER_CENTER_THRESHOLD = 0.15; // how centered an observer's nose must be to count as "looking"
+
+function startShoulderSurfDetection() {
+  if (shoulderSurfActive) return;
+  shoulderSurfActive = true;
+  lookingStreak = 0;
+  shoulderSurfInterval = setInterval(checkForShoulderSurfing, 500);
+}
+
+function stopShoulderSurfDetection() {
+  shoulderSurfActive = false;
+  if (shoulderSurfInterval) clearInterval(shoulderSurfInterval);
+  shoulderSurfInterval = null;
+  lookingStreak = 0;
+  clearShoulderSurfAlert();
+}
+
+async function checkForShoulderSurfing() {
+  if (!monitorFeed.srcObject) return; // only runs while presence-monitoring camera is active
+
+  const detections = await faceapi
+    .detectAllFaces(monitorFeed, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks();
+
+  if (detections.length < 2) {
+    lookingStreak = 0;
+    clearShoulderSurfAlert();
+    return; // only you (or nobody) in frame — no observer present
+  }
+
+  // Assume the largest detected face (by box area) is the primary user.
+  let userIndex = 0;
+  let largestArea = 0;
+  detections.forEach((d, i) => {
+    const area = d.detection.box.width * d.detection.box.height;
+    if (area > largestArea) {
+      largestArea = area;
+      userIndex = i;
+    }
+  });
+
+  const observers = detections.filter((_, i) => i !== userIndex);
+
+  const anyObserverLooking = observers.some((obs) => {
+    const offset = Math.abs(getNoseOffset(obs.landmarks));
+    return offset < OBSERVER_CENTER_THRESHOLD; // roughly facing the camera = facing the screen
+  });
+
+  if (anyObserverLooking) {
+    lookingStreak++;
+    if (lookingStreak >= LOOKING_STREAK_THRESHOLD) {
+      showShoulderSurfAlert();
+    }
+  } else {
+    lookingStreak = 0;
+    clearShoulderSurfAlert();
+  }
+}
+
+function showShoulderSurfAlert() {
+  document.body.classList.add("shoulder-surf-blur");
+  let banner = document.getElementById("shoulder-surf-banner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "shoulder-surf-banner";
+    banner.className = "shoulder-surf-banner";
+    banner.textContent = "⚠ Possible shoulder surfing detected — someone may be viewing your screen";
+    document.body.appendChild(banner);
+  }
+}
+
+function clearShoulderSurfAlert() {
+  document.body.classList.remove("shoulder-surf-blur");
+  const banner = document.getElementById("shoulder-surf-banner");
+  if (banner) banner.remove();
+}
+// ---------------------------------------------------------------------------
+// Security activity viewer
+// ---------------------------------------------------------------------------
+
+securityLogBtn.addEventListener("click", async () => {
+  securityLogModal.classList.remove("hidden");
+  securityLogList.innerHTML = "<p style='color:var(--paper-dim)'>Loading…</p>";
+
+  const res = await fetch(`${API_BASE}/security/captures`, { headers: authHeaders() });
+  const { captures } = await res.json();
+
+  securityLogList.innerHTML = "";
+
+  if (captures.length === 0) {
+    securityLogList.innerHTML = "<p style='color:var(--paper-dim)'>No security events recorded yet.</p>";
+    return;
+  }
+
+  captures.forEach((cap) => {
+    const item = document.createElement("div");
+    item.style.display = "flex";
+    item.style.gap = "12px";
+    item.style.alignItems = "center";
+    item.style.padding = "8px";
+    item.style.background = "var(--ink-800)";
+    item.style.borderRadius = "8px";
+
+    const img = document.createElement("img");
+    img.src = `http://localhost:4000/security-captures/${cap.filename}`;
+    img.style.width = "70px";
+    img.style.height = "70px";
+    img.style.objectFit = "cover";
+    img.style.borderRadius = "6px";
+
+    const info = document.createElement("div");
+    const reasonLabel = cap.reason === "failed_login" ? "Failed login attempt" : "Monitoring mismatch";
+    info.innerHTML = `<div style="font-weight:600; font-size:13.5px;">${reasonLabel}</div>
+                       <div style="font-size:12px; color:var(--paper-dim);">${new Date(cap.created_at).toLocaleString()}</div>`;
+
+    item.appendChild(img);
+    item.appendChild(info);
+    securityLogList.appendChild(item);
+  });
+});
+
+securityLogCloseBtn.addEventListener("click", () => {
+  securityLogModal.classList.add("hidden");
+});
+// ---------------------------------------------------------------------------
+// Quick-launch (fixed app buttons — no free text ever reaches the backend)
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll(".launch-btn").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const appName = btn.dataset.app;
+    const res = await fetch(`${API_BASE}/launch/${appName}`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+
+    if (res.ok) {
+      uploadStatus.textContent = `Opened ${appName}.`;
+    } else {
+      const data = await res.json();
+      uploadStatus.textContent = data.error || `Could not open ${appName}.`;
+    }
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Final wiring
@@ -1000,4 +1325,3 @@ promptInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") sendMessage();
 });
 
-init();

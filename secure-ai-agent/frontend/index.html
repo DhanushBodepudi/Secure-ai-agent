@@ -4,16 +4,49 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aperture — Secure Image Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 <!-- face-api.js: runs face detection/embedding entirely in the browser -->
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 </head>
-<body>
+<body class="splash-active">
+
+  <!-- ===================== SPLASH (click to shatter) ===================== -->
+  <div id="splash-screen" class="splash-screen" role="button" tabindex="0" aria-label="Enter Aperture">
+    <div class="splash-stage">
+      <svg class="splash-logo logo-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="#d4f1de" stroke="#2f8f5f" stroke-width="1.1" />
+        <g stroke="#2f8f5f" stroke-width="1.1" stroke-linecap="round" fill="none">
+          <line x1="14.31" y1="8" x2="20.05" y2="17.94" />
+          <line x1="9.69" y1="8" x2="21.17" y2="8" />
+          <line x1="7.38" y1="12" x2="13.12" y2="2.06" />
+          <line x1="9.69" y1="16" x2="3.95" y2="6.06" />
+          <line x1="14.31" y1="16" x2="2.83" y2="16" />
+          <line x1="16.62" y1="12" x2="10.88" y2="21.94" />
+        </g>
+      </svg>
+      <div class="splash-title">Aperture</div>
+      <p class="splash-tag">Your private, secure AI studio</p>
+      <div class="splash-hint">Click anywhere to begin</div>
+    </div>
+  </div>
 
   <!-- ===================== LOCK SCREEN ===================== -->
   <section id="lock-screen" class="lock-screen">
     <div class="lock-card">
-      <div class="lock-mark">◆</div>
+      <svg class="lock-logo logo-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="#d4f1de" stroke="#2f8f5f" stroke-width="1.1" />
+        <g stroke="#2f8f5f" stroke-width="1.1" stroke-linecap="round" fill="none">
+          <line x1="14.31" y1="8" x2="20.05" y2="17.94" />
+          <line x1="9.69" y1="8" x2="21.17" y2="8" />
+          <line x1="7.38" y1="12" x2="13.12" y2="2.06" />
+          <line x1="9.69" y1="16" x2="3.95" y2="6.06" />
+          <line x1="14.31" y1="16" x2="2.83" y2="16" />
+          <line x1="16.62" y1="12" x2="10.88" y2="21.94" />
+        </g>
+      </svg>
       <h1>Aperture</h1>
       <p class="lock-sub" id="lock-status">Looking for a familiar face…</p>
 
@@ -24,19 +57,19 @@
 
       <button id="use-password-btn" class="link-btn">Use password instead</button>
 
-<form id="password-form" class="password-form hidden">
-  <div class="input-with-mic">
-    <input
-      type="password"
-      id="password-input"
-      placeholder="Enter password"
-      autocomplete="current-password"
-    />
-    <button type="button" id="password-mic-btn" class="mic-btn" title="Speak password">🎤</button>
-  </div>
-  <button type="submit" class="primary-btn">Unlock</button>
-  <p id="password-error" class="error-text"></p>
-</form>
+      <form id="password-form" class="password-form hidden">
+        <div class="input-with-mic">
+          <input
+            type="password"
+            id="password-input"
+            placeholder="Enter password"
+            autocomplete="current-password"
+          />
+          <button type="button" id="password-mic-btn" class="mic-btn" title="Speak password">🎤</button>
+        </div>
+        <button type="submit" class="primary-btn">Unlock</button>
+        <p id="password-error" class="error-text"></p>
+      </form>
 
       <form id="enroll-form" class="password-form hidden">
         <p class="lock-sub">No face on file yet. Set your password first, then we'll learn your face.</p>
@@ -51,50 +84,87 @@
   <section id="app-shell" class="app-shell hidden">
 
     <aside class="sidebar">
- <div class="sidebar-header">
-  <span class="brand">◆ Aperture</span>
-  <button id="new-chat-btn" class="new-chat-btn" title="New chat">＋ New chat</button>
-  <input type="text" id="search-input" class="search-input" placeholder="Search chats…" />
-</div>
-<div id="chat-list" class="chat-list"></div>
-<div id="search-results" class="chat-list hidden"></div>
-    <div class="sidebar-footer">
-  <button id="monitor-toggle-btn" class="link-btn subtle">Start monitoring</button>
-  <button id="lock-app-btn" class="link-btn subtle">Lock screen</button>
-</div>
+      <div class="sidebar-header">
+        <span class="brand">
+          <svg class="brand-logo logo-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" fill="#d4f1de" stroke="#2f8f5f" stroke-width="1.1" />
+            <g stroke="#2f8f5f" stroke-width="1.1" stroke-linecap="round" fill="none">
+              <line x1="14.31" y1="8" x2="20.05" y2="17.94" />
+              <line x1="9.69" y1="8" x2="21.17" y2="8" />
+              <line x1="7.38" y1="12" x2="13.12" y2="2.06" />
+              <line x1="9.69" y1="16" x2="3.95" y2="6.06" />
+              <line x1="14.31" y1="16" x2="2.83" y2="16" />
+              <line x1="16.62" y1="12" x2="10.88" y2="21.94" />
+            </g>
+          </svg>
+          Aperture
+        </span>
+        <button id="new-chat-btn" class="new-chat-btn" title="New chat">＋ New chat</button>
+        <input type="text" id="search-input" class="search-input" placeholder="Search chats…" />
+      </div>
+
+      <div id="chat-list" class="chat-list"></div>
+      <div id="search-results" class="chat-list hidden"></div>
+
+      <div class="quick-launch-row">
+        <button class="launch-btn" data-app="notepad" title="Notepad">📝</button>
+        <button class="launch-btn" data-app="explorer" title="File Explorer">📁</button>
+        <button class="launch-btn" data-app="whatsapp" title="WhatsApp">💬</button>
+        <button class="launch-btn" data-app="calculator" title="Calculator">🧮</button>
+        <button class="launch-btn" data-app="vscode" title="VS Code">💻</button>
+        <button class="launch-btn" data-app="chrome" title="Chrome">🌐</button>
+        <button class="launch-btn" data-app="taskmanager" title="Task Manager">📊</button>
+        <button class="launch-btn" data-app="settings" title="Settings">⚙️</button>
+        <button class="launch-btn" data-app="snip" title="Snipping Tool">✂️</button>
+        <button class="launch-btn" data-app="terminal" title="Terminal">⌨️</button>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="monitor-toggle-btn" class="link-btn subtle">Start monitoring</button>
+        <button id="add-face-btn" class="link-btn subtle">Add another face</button>
+        <button id="security-log-btn" class="link-btn subtle">Security activity</button>
+        <button id="lock-app-btn" class="link-btn subtle">Lock screen</button>
+      </div>
     </aside>
 
     <main class="main-panel">
       <header class="main-header">
         <h2 id="current-chat-title">New chat</h2>
       </header>
-<video id="monitor-feed" autoplay muted playsinline class="monitor-feed"></video>
+
+      <video id="monitor-feed" autoplay muted playsinline class="monitor-feed"></video>
+
       <div id="message-list" class="message-list">
         <div class="empty-state">
           <p>Describe an image, and it'll appear here.</p>
         </div>
       </div>
 
-<div id="attachment-chip" class="attachment-chip hidden">
-  <span id="attachment-icon">📄</span>
-  <span id="attachment-name"></span>
-  <button id="remove-attachment-btn" class="chip-remove" title="Remove">✕</button>
-</div>
-<div class="composer">
-  <select id="mode-select" class="icon-btn">
-    <option value="chat">💬 Chat</option>
-    <option value="image">🖼️ Image</option>
-  </select>
-  <button id="attach-btn" class="icon-btn" title="Attach a file">📎</button>
-  <input type="file" id="file-input" class="hidden" />
-  <input
-    type="text"
-    id="prompt-input"
-    placeholder="Ask a question, or describe an image…"
-  />
-  <button id="prompt-mic-btn" class="icon-btn" title="Speak your prompt">🎤</button>
-  <button id="send-btn" class="primary-btn">Send</button>
-</div>
+      <div id="attachment-chip" class="attachment-chip hidden">
+        <span id="attachment-icon">📄</span>
+        <span id="attachment-name"></span>
+        <button id="remove-attachment-btn" class="chip-remove" title="Remove">✕</button>
+      </div>
+
+      <div class="composer">
+        <select id="mode-select">
+          <option value="chat">💬 Chat</option>
+          <option value="image">🖼️ Image</option>
+          <option value="pdf">📄 PDF</option>
+          <option value="ppt">📊 PPT</option>
+          <option value="code">💻 Code file</option>
+          <option value="zip">📦 ZIP project</option>
+        </select>
+        <button id="attach-btn" class="icon-btn" title="Attach a file">📎</button>
+        <input type="file" id="file-input" class="hidden" />
+        <input
+          type="text"
+          id="prompt-input"
+          placeholder="Ask Aperture…"
+        />
+        <button id="prompt-mic-btn" class="icon-btn" title="Speak your prompt">🎤</button>
+        <button id="send-btn" class="primary-btn">Send</button>
+      </div>
       <p id="upload-status" class="upload-status"></p>
     </main>
   </section>
@@ -107,12 +177,41 @@
       <input type="password" id="elevate-password-input" placeholder="Enter password" />
       <div class="modal-actions">
         <button id="elevate-cancel-btn" class="ghost-btn">Cancel</button>
-        <button id="elevate-confirm-btn" class="primary-btn">Verify & upload</button>
+        <button id="elevate-confirm-btn" class="primary-btn">Verify &amp; upload</button>
       </div>
       <p id="elevate-error" class="error-text"></p>
     </div>
   </div>
 
- <script defer src="app.js"></script>
+  <!-- ===================== ADD ANOTHER FACE MODAL ===================== -->
+  <div id="add-face-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Add another face</h3>
+      <p class="modal-text">Have the new person position their face in the frame, then click Capture.</p>
+      <div class="camera-frame" style="width:180px; height:180px; margin: 0 auto 16px;">
+        <video id="add-face-feed" autoplay muted playsinline></video>
+      </div>
+      <p id="add-face-error" class="error-text"></p>
+      <div class="modal-actions">
+        <button id="add-face-cancel-btn" class="ghost-btn">Cancel</button>
+        <button id="add-face-capture-btn" class="primary-btn">Capture</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SECURITY ACTIVITY MODAL ===================== -->
+  <div id="security-log-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="width: min(600px, 94vw); max-height: 80vh; overflow-y: auto;">
+      <h3>Security activity</h3>
+      <p class="modal-text">Camera captures from failed logins and monitoring mismatches.</p>
+      <div id="security-log-list" style="display:flex; flex-direction:column; gap:12px; margin: 16px 0;"></div>
+      <div class="modal-actions">
+        <button id="security-log-close-btn" class="ghost-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="app.js"></script>
+  <script defer src="splash.js"></script>
 </body>
 </html>
