@@ -12,15 +12,16 @@ db.pragma("journal_mode = WAL"); // better write performance/safety
 
 // --- Schema ---------------------------------------------------------------
 
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS face_embeddings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    embedding TEXT NOT NULL,       -- JSON-encoded array of floats
+    embedding TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS chats (
-    id TEXT PRIMARY KEY,           -- uuid
+    id TEXT PRIMARY KEY,
     title TEXT NOT NULL DEFAULT 'New chat',
     pinned INTEGER NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -28,11 +29,11 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS messages (
-    id TEXT PRIMARY KEY,           -- uuid
+    id TEXT PRIMARY KEY,
     chat_id TEXT NOT NULL,
-    role TEXT NOT NULL,            -- 'user' | 'assistant'
-    content TEXT NOT NULL,         -- text content, or a caption for images
-    image_path TEXT,               -- nullable: path to a generated/uploaded image
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    image_path TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
   );
@@ -43,17 +44,25 @@ db.exec(`
     original_name TEXT NOT NULL,
     extension TEXT NOT NULL,
     sha256 TEXT NOT NULL,
-    was_elevated INTEGER NOT NULL DEFAULT 0, -- 1 if it required password verification
+    was_elevated INTEGER NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS auth_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    method TEXT NOT NULL,          -- 'face' | 'password'
-    success INTEGER NOT NULL,      -- 1 or 0
+    method TEXT NOT NULL,
+    success INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS security_captures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT NOT NULL,
+    reason TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 `);
+
 
 // --- Migrations -------------------------------------------------------------
 // For databases created before a given column existed. Each is wrapped in a
