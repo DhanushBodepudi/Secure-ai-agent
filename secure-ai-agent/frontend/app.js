@@ -4,7 +4,7 @@
 // decision, chat management, uploads with elevation, voice input, search,
 // presence monitoring, and chat sharing.
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "https://aperture-backend-s79c.onrender.com/api";
 
 // ---------------------------------------------------------------------------
 // State
