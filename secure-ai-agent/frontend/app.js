@@ -603,7 +603,7 @@ function renderMessage(msg) {
   if (msg.image_path) {
     const fullUrl = msg.image_path.startsWith("http")
       ? msg.image_path
-      : `http://localhost:4000${msg.image_path}`;
+     : `https://aperture-backend-s79c.onrender.com${msg.image_path}`;
 
     if (/\.(png|jpe?g|webp|gif)$/i.test(msg.image_path)) {
       const img = document.createElement("img");
@@ -1275,7 +1275,7 @@ securityLogBtn.addEventListener("click", async () => {
     item.style.borderRadius = "8px";
 
     const img = document.createElement("img");
-    img.src = `http://localhost:4000/security-captures/${cap.filename}`;
+img.src = `https://aperture-backend-s79c.onrender.com/security-captures/${cap.filename}`;
     img.style.width = "70px";
     img.style.height = "70px";
     img.style.objectFit = "cover";
