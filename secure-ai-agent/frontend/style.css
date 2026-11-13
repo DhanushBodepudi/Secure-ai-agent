@@ -117,8 +117,45 @@ button { cursor: pointer; }
   min-height: 16px;
 }
 
-.password-form input,
-.modal-card input {
+.success-text {
+  color: #1a6f3c;
+  background: #e8f7ee;
+  border: 1px solid #bce6cb;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin: 4px 0 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.info-box {
+  color: #1e5234;
+  background: #f0f8f4;
+  border: 1px solid #cce8d8;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin: 4px 0 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.forgot-link-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+  margin-bottom: 2px;
+}
+
+.forgot-link-row .link-btn {
+  font-size: 13px;
+  padding: 2px 4px;
+  display: inline;
+}
+
+.password-form input:not([type="checkbox"]),
+.modal-card input:not([type="checkbox"]) {
   width: 100%;
   background: var(--surface);
   border: 1px solid transparent;
@@ -127,8 +164,8 @@ button { cursor: pointer; }
   font-size: 15px;
   color: var(--text);
 }
-.password-form input:focus,
-.modal-card input:focus {
+.password-form input:not([type="checkbox"]):focus,
+.modal-card input:not([type="checkbox"]):focus {
   outline: none;
   background: #fff;
   border-color: var(--accent-deep);
@@ -256,7 +293,7 @@ button { cursor: pointer; }
 }
 
 .lock-card {
-  width: min(400px, 92vw);
+  width: min(420px, 92vw);
   text-align: center;
   padding: 32px 28px;
 }
@@ -748,27 +785,114 @@ button { cursor: pointer; }
 }
 .modal-card h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
 .modal-text { color: var(--text-muted); font-size: 14px; line-height: 1.45; margin: 0 0 16px; }
-.modal-card input { margin-bottom: 12px; }
+.modal-card input:not([type="checkbox"]) { margin-bottom: 12px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 /* ==========================================================================
    Shoulder-surfing alert
    ========================================================================== */
 
-.shoulder-surf-blur #app-shell { filter: blur(14px); transition: filter 0.2s ease; }
+.shoulder-surf-blur #app-shell,
+.shoulder-surf-blur .modal-card {
+  filter: blur(22px) brightness(0.85);
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.25s ease;
+}
+
 .shoulder-surf-banner {
   position: fixed;
-  top: 16px;
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
-  background: var(--danger);
+  z-index: 99999;
+  background: #0f172a;
+  border: 1px solid rgba(239, 68, 68, 0.45);
   color: #fff;
-  padding: 12px 24px;
-  border-radius: 999px;
+  padding: 14px 24px;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90vw;
+}
+
+.shoulder-surf-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.shoulder-surf-icon {
+  font-size: 26px;
+  line-height: 1;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.shoulder-surf-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #fca5a5;
+  letter-spacing: -0.2px;
+}
+
+.shoulder-surf-sub {
+  font-size: 13px;
+  color: #e2e8f0;
+  margin-top: 2px;
+}
+
+.shoulder-surf-dismiss {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 14px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.shoulder-surf-dismiss:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translate(-50%, -15px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.shared-privacy-notice {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin: 14px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.redacted-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  user-select: none;
+  vertical-align: baseline;
 }
 
 /* ==========================================================================
@@ -794,3 +918,104 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .splash-logo, .splash-title, .splash-tag, .splash-hint, .scan-line { animation: none; }
 }
+
+
+/* ==========================================================================
+   Accounts: sign-in / register / face welcome, settings, security log
+   ========================================================================== */
+
+.face-welcome { margin: 0 0 18px; font-size: 20px; font-weight: 500; }
+
+.auth-switch { margin: 6px 0 0; font-size: 14px; color: var(--text-muted); }
+.auth-switch .link-btn { padding: 2px 4px; }
+.privacy-note { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-faint); }
+
+.lock-card .link-btn { display: block; margin: 0 auto; }
+
+.sidebar-user {
+  padding: 6px 14px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-card.wide { width: min(560px, 94vw); max-height: 86vh; overflow-y: auto; }
+
+.camera-frame.small { width: 150px; height: 150px; margin: 4px auto 16px; box-shadow: 0 0 0 6px rgba(196, 236, 209, 0.45); }
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.checkbox-row input { width: 18px; height: 18px; accent-color: var(--accent-deep); }
+
+.settings-section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.settings-section:last-of-type { border-bottom: none; }
+.settings-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+.settings-value { font-size: 15px; font-weight: 500; }
+.settings-note { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.settings-buttons { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.settings-section .ghost-btn { padding: 9px 18px; }
+.settings-section input:not([type="checkbox"]) { margin-bottom: 8px; }
+.danger-btn { color: var(--danger); border-color: #f1c4c2; }
+.danger-btn:hover { background: var(--danger-bg); }
+
+.security-log-list { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 16px; }
+.security-empty { color: var(--text-muted); font-size: 14px; padding: 8px 0; }
+.security-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 16px;
+}
+.security-item img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; background: #dfe6e1; }
+.security-item-info { flex: 1; }
+.security-item-title { font-weight: 600; font-size: 14px; }
+.security-item-time { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.security-item button {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.security-item button:hover { color: var(--danger); background: var(--danger-bg); }
+
+/* The password prompt opens ON TOP of Settings (turning off face login, deleting
+   the account), so it must sit above every other window. */
+#pw-modal { z-index: 60; }
+
+/* --- polish found while reviewing the screens --- */
+
+/* the sign-in / register buttons sit on the green glow, so they need a little more body */
+.lock-card .primary-btn {
+  background: #a9e0bd;
+  box-shadow: 0 1px 3px rgba(13, 59, 37, 0.22);
+}
+.lock-card .primary-btn:hover { background: #94d6ad; }
+
+/* "New here? Create an account" is one sentence, not two stacked lines */
+.auth-switch .link-btn { display: inline; margin: 0; }
+
+/* long windows (Settings, Security activity): the content scrolls on its own and the
+   buttons stay in a fixed footer that never covers anything */
+.modal-card.wide {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.modal-card.wide > h3 { margin: 0; padding: 26px 28px 10px; }
+.modal-card.wide > .modal-text { margin: 0; padding: 0 28px 4px; }
+.modal-card.wide .modal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px; }
+.modal-card.wide .modal-actions { margin: 0; padding: 14px 28px 20px; background: #fff; border-top: 1px solid var(--border); }

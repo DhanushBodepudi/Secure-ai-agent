@@ -1,15 +1,14 @@
 // fileFilter.js
 //
-// IMPORTANT: checking a file's extension alone is not real security — anyone
-// can rename "script.py" to "script.txt". We treat the extension check as a
-// user-facing rule ("code files need verification") and back it up with a
-// content-sniffing check so a renamed file can't sneak past either gate.
+// Checking a file's extension alone is not real security: anyone can rename
+// "script.py" to "script.txt". So the extension rule ("code files need your
+// password") is backed up by a content check on the file's real type, and a
+// file whose name and content disagree is treated as suspicious.
 
-const FileType = require("file-type");
+const FileType = require("file-type"); // v16: pinned in package.json
 const crypto = require("crypto");
 
-// Extensions that are blocked by default and require an elevated (password
-// re-verified) token to upload.
+// Blocked by default; need an "elevated" (password re-checked) token to upload.
 const CODE_EXTENSIONS = new Set([
   "py", "js", "ts", "jsx", "tsx", "php", "rb", "sh", "bat", "ps1", "vbs",
   "exe", "dll", "so", "jar", "java", "c", "cpp", "h", "hpp", "cs", "go",
@@ -17,17 +16,19 @@ const CODE_EXTENSIONS = new Set([
   "msi", "scr", "cmd",
 ]);
 
-// Extensions we're happy to accept from anyone with a valid session
-// (adjust to match what your image-generation feature actually needs).
+// Accepted without extra verification.
 const ALLOWED_GENERAL_EXTENSIONS = new Set([
   "png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "pdf", "txt", "md",
-  "csv", "json",
+  "csv", "json", "log", "docx",
 ]);
 
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+// The same format can be named two ways; they must not count as a mismatch.
+const normalize = (ext) => ({ jpeg: "jpg", htm: "html" }[ext] || ext);
 
 function getExtension(filename) {
-  const parts = filename.toLowerCase().split(".");
+  const parts = String(filename).toLowerCase().split(".");
   return parts.length > 1 ? parts.pop() : "";
 }
 
@@ -43,43 +44,29 @@ async function classifyUpload(file) {
     return { verdict: "reject", reason: "File exceeds the 20MB size limit." };
   }
 
-  // Sniff the real content type from the file's magic bytes, not its name.
   const sniffed = await FileType.fromBuffer(file.buffer);
   const sniffedExt = sniffed ? sniffed.ext : null;
 
-  // If the declared extension and the sniffed content disagree, treat the
-  // file as suspicious and require elevation, regardless of which one
-  // looks "safe" — this is exactly the renamed-file bypass case.
-  const mismatch = sniffedExt && sniffedExt !== declaredExt;
+  const mismatch = Boolean(sniffedExt) && normalize(sniffedExt) !== normalize(declaredExt);
 
   if (CODE_EXTENSIONS.has(declaredExt) || mismatch) {
     return {
       verdict: "needs_elevation",
       reason: mismatch
-        ? `File content (${sniffedExt || "unknown"}) doesn't match its extension (${declaredExt}). Verification required.`
-        : `.${declaredExt} files require password verification before upload.`,
+        ? `File content (${sniffedExt}) doesn't match its extension (.${declaredExt || "none"}). Verification required.`
+        : `.${declaredExt} files require password verification before they can be used.`,
     };
   }
 
-  if (
-    ALLOWED_GENERAL_EXTENSIONS.has(declaredExt) ||
-    (sniffedExt && ALLOWED_GENERAL_EXTENSIONS.has(sniffedExt))
-  ) {
+  if (ALLOWED_GENERAL_EXTENSIONS.has(declaredExt)) {
     return { verdict: "allow", reason: "OK" };
   }
 
-  // Unknown/unrecognized type: default to safe-by-default and require
-  // verification rather than silently allowing something unclassified.
+  // Unknown types are never silently accepted.
   return {
     verdict: "needs_elevation",
     reason: `Unrecognized file type (.${declaredExt || "unknown"}). Verification required.`,
   };
 }
 
-module.exports = {
-  classifyUpload,
-  getExtension,
-  sha256,
-  CODE_EXTENSIONS,
-  MAX_FILE_SIZE_BYTES,
-};
+module.exports = { classifyUpload, getExtension, sha256, CODE_EXTENSIONS, MAX_FILE_SIZE_BYTES };

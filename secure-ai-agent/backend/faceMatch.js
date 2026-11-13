@@ -1,46 +1,61 @@
 // faceMatch.js
-// Server-side face embedding comparison. The browser only ever sends numeric
-// embedding vectors (computed by face-api.js), never raw images, and the
-// match decision is made HERE, not trusted from the client.
+// Face templates are stored per user, and a login is only ever compared with the
+// templates of the ONE account being signed in to (never against everyone).
+//
+// The browser sends numbers (a 128-value "embedding" computed by face-api.js),
+// never a photo. Matching uses Euclidean distance, the measure face-api.js itself
+// recommends. The distance is never sent back to the browser, because a score
+// would let an attacker tune guesses until one passes.
 
 const db = require("./db");
+const cfg = require("./config");
 
-const THRESHOLD = parseFloat(process.env.FACE_MATCH_THRESHOLD || "0.92");
-
-function cosineSimilarity(a, b) {
-  if (a.length !== b.length) return -1;
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  if (normA === 0 || normB === 0) return -1;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-function hasEnrolledFace() {
-  const row = db.prepare("SELECT COUNT(*) AS count FROM face_embeddings").get();
-  return row.count > 0;
-}
-
-function enrollFace(embedding) {
-  db.prepare("INSERT INTO face_embeddings (embedding) VALUES (?)").run(
-    JSON.stringify(embedding)
+function isValidEmbedding(e) {
+  return (
+    Array.isArray(e) &&
+    e.length === 128 &&
+    e.every((v) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 10)
   );
 }
 
-function findBestMatch(candidateEmbedding) {
-  const rows = db.prepare("SELECT embedding FROM face_embeddings").all();
-  let best = -1;
-
-  for (const row of rows) {
-    const stored = JSON.parse(row.embedding);
-    const sim = cosineSimilarity(candidateEmbedding, stored);
-    if (sim > best) best = sim;
+function euclidean(a, b) {
+  let sum = 0;
+  for (let i = 0; i < a.length; i++) {
+    const d = a[i] - b[i];
+    sum += d * d;
   }
-
-  return { similarity: best, isMatch: best >= THRESHOLD };
+  return Math.sqrt(sum);
 }
 
-module.exports = { hasEnrolledFace, enrollFace, findBestMatch, THRESHOLD };
+function getTemplates(userId) {
+  return db
+    .prepare("SELECT embedding FROM face_embeddings WHERE user_id = ?")
+    .all(userId)
+    .map((row) => JSON.parse(row.embedding));
+}
+
+function hasFace(userId) {
+  return db.prepare("SELECT 1 FROM face_embeddings WHERE user_id = ? LIMIT 1").get(userId) !== undefined;
+}
+
+// Replaces whatever this user had before with the new set of templates.
+function enrollFace(userId, embeddings) {
+  const insert = db.prepare("INSERT INTO face_embeddings (user_id, embedding) VALUES (?, ?)");
+  db.transaction(() => {
+    db.prepare("DELETE FROM face_embeddings WHERE user_id = ?").run(userId);
+    embeddings.forEach((e) => insert.run(userId, JSON.stringify(e)));
+  })();
+}
+
+function removeFace(userId) {
+  db.prepare("DELETE FROM face_embeddings WHERE user_id = ?").run(userId);
+}
+
+function matchFace(userId, embedding) {
+  const templates = getTemplates(userId);
+  if (templates.length === 0) return { enrolled: false, isMatch: false };
+  const best = Math.min(...templates.map((t) => euclidean(embedding, t)));
+  return { enrolled: true, isMatch: best <= cfg.FACE_MAX_DISTANCE };
+}
+
+module.exports = { isValidEmbedding, hasFace, enrollFace, removeFace, matchFace };

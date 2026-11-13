@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <!-- ===================== LOCK SCREEN ===================== -->
+  <!-- ===================== SIGN IN / REGISTER / FACE LOGIN ===================== -->
   <section id="lock-screen" class="lock-screen">
     <div class="lock-card">
       <svg class="lock-logo logo-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -48,34 +48,65 @@
         </g>
       </svg>
       <h1>Aperture</h1>
-      <p class="lock-sub" id="lock-status">Looking for a familiar face…</p>
+      <p class="lock-sub" id="lock-status">Sign in to continue</p>
 
-      <div class="camera-frame">
-        <video id="camera-feed" autoplay muted playsinline></video>
-        <div class="scan-line"></div>
+      <!-- Face login: only shown for a returning person who turned it on -->
+      <div id="face-view" class="hidden">
+        <p id="face-welcome" class="face-welcome"></p>
+        <div class="camera-frame">
+          <video id="camera-feed" autoplay muted playsinline></video>
+          <div class="scan-line"></div>
+        </div>
+        <button id="use-password-btn" class="link-btn" type="button">Use password instead</button>
+        <button id="not-you-btn" class="link-btn" type="button">Not you? Use a different account</button>
       </div>
 
-      <button id="use-password-btn" class="link-btn">Use password instead</button>
-
-      <form id="password-form" class="password-form hidden">
+      <form id="signin-form" class="password-form hidden" novalidate>
+        <input type="email" id="signin-email" placeholder="Email" autocomplete="username" />
         <div class="input-with-mic">
-          <input
-            type="password"
-            id="password-input"
-            placeholder="Enter password"
-            autocomplete="current-password"
-          />
+          <input type="password" id="signin-password" placeholder="Password" autocomplete="current-password" />
           <button type="button" id="password-mic-btn" class="mic-btn" title="Speak password">🎤</button>
         </div>
-        <button type="submit" class="primary-btn">Unlock</button>
-        <p id="password-error" class="error-text"></p>
+        <div class="forgot-link-row">
+          <button type="button" id="to-forgot-btn" class="link-btn">Forgot password?</button>
+        </div>
+        <button type="submit" class="primary-btn" id="signin-submit">Sign in</button>
+        <p id="signin-error" class="error-text"></p>
+        <p class="auth-switch" id="to-register-row">New here? <button type="button" id="to-register-btn" class="link-btn">Create an account</button></p>
       </form>
 
-      <form id="enroll-form" class="password-form hidden">
-        <p class="lock-sub">No face on file yet. Set your password first, then we'll learn your face.</p>
-        <input type="password" id="enroll-password-input" placeholder="Choose a password" autocomplete="new-password" />
-        <button type="button" id="enroll-face-btn" class="primary-btn">Capture my face</button>
-        <p id="enroll-error" class="error-text"></p>
+      <form id="register-form" class="password-form hidden" novalidate>
+        <input type="text" id="register-name" placeholder="Your name" autocomplete="name" maxlength="60" />
+        <input type="email" id="register-email" placeholder="Email" autocomplete="email" />
+        <input type="password" id="register-password" placeholder="Password (at least 8 characters)" autocomplete="new-password" />
+        <input type="password" id="register-confirm" placeholder="Confirm password" autocomplete="new-password" />
+        <button type="submit" class="primary-btn" id="register-submit">Create account</button>
+        <p id="register-error" class="error-text"></p>
+        <p class="privacy-note">Your chats are private to your account. Face login is optional and off until you turn it on in Settings.</p>
+        <p class="auth-switch">Already have an account? <button type="button" id="to-signin-btn" class="link-btn">Sign in</button></p>
+      </form>
+
+      <!-- ===================== FORGOT PASSWORD ===================== -->
+      <form id="forgot-form" class="password-form hidden" novalidate>
+        <p class="privacy-note" style="margin-bottom: 4px;">Enter your email to receive a 6-digit verification code to reset your password.</p>
+        <input type="email" id="forgot-email" placeholder="Account email" autocomplete="email" />
+        <button type="button" class="primary-btn" id="forgot-send-code-btn">Get Verification Code</button>
+
+        <div id="forgot-face-option" class="hidden">
+          <button type="button" class="link-btn" id="forgot-face-btn" style="width: 100%; text-align: center; margin-top: 4px;">Verify with Face Recognition instead</button>
+        </div>
+
+        <div id="forgot-reset-section" class="hidden" style="display:flex; flex-direction:column; gap:10px;">
+          <input type="text" id="forgot-code" placeholder="6-digit verification code" maxlength="6" autocomplete="one-time-code" />
+          <input type="password" id="forgot-new-password" placeholder="New password (at least 8 characters)" autocomplete="new-password" />
+          <input type="password" id="forgot-confirm-password" placeholder="Confirm new password" autocomplete="new-password" />
+          <button type="submit" class="primary-btn" id="forgot-submit-btn">Reset Password</button>
+        </div>
+
+        <p id="forgot-error" class="error-text"></p>
+        <p id="forgot-info" class="info-box hidden"></p>
+        <p id="forgot-success" class="success-text hidden"></p>
+        <p class="auth-switch">Remember your password? <button type="button" id="to-signin-from-forgot-btn" class="link-btn">Sign in</button></p>
       </form>
     </div>
   </section>
@@ -106,7 +137,8 @@
       <div id="chat-list" class="chat-list"></div>
       <div id="search-results" class="chat-list hidden"></div>
 
-      <div class="quick-launch-row">
+      <!-- Windows shortcuts: shown only when the server says it is your own laptop -->
+      <div id="quick-launch-row" class="quick-launch-row hidden">
         <button class="launch-btn" data-app="notepad" title="Notepad">📝</button>
         <button class="launch-btn" data-app="explorer" title="File Explorer">📁</button>
         <button class="launch-btn" data-app="whatsapp" title="WhatsApp">💬</button>
@@ -114,16 +146,21 @@
         <button class="launch-btn" data-app="vscode" title="VS Code">💻</button>
         <button class="launch-btn" data-app="chrome" title="Chrome">🌐</button>
         <button class="launch-btn" data-app="taskmanager" title="Task Manager">📊</button>
-        <button class="launch-btn" data-app="settings" title="Settings">⚙️</button>
+        <button class="launch-btn" data-app="settings" title="Windows Settings">⚙️</button>
         <button class="launch-btn" data-app="snip" title="Snipping Tool">✂️</button>
         <button class="launch-btn" data-app="terminal" title="Terminal">⌨️</button>
       </div>
 
       <div class="sidebar-footer">
-        <button id="monitor-toggle-btn" class="link-btn subtle">Start monitoring</button>
-        <button id="add-face-btn" class="link-btn subtle">Add another face</button>
+        <div id="sidebar-user" class="sidebar-user"></div>
+        <div style="display:flex; gap:6px; align-items:center; padding: 2px 10px 4px;">
+          <button id="monitor-toggle-btn" class="link-btn subtle" style="flex:1; text-align:left; font-size:13px; font-weight:500; padding:6px 0;">🛡️ Privacy Guard: Off</button>
+          <button id="test-blur-btn" class="link-btn subtle" style="font-size:12px; color:#2563eb; padding:4px 8px; white-space:nowrap; text-decoration:none; background:rgba(37,99,235,0.08); border-radius:999px;" title="Preview shoulder-surfing screen blur">Test Blur</button>
+        </div>
+        <button id="settings-btn" class="link-btn subtle">Settings</button>
         <button id="security-log-btn" class="link-btn subtle">Security activity</button>
         <button id="lock-app-btn" class="link-btn subtle">Lock screen</button>
+        <button id="signout-btn" class="link-btn subtle">Sign out</button>
       </div>
     </aside>
 
@@ -157,11 +194,7 @@
         </select>
         <button id="attach-btn" class="icon-btn" title="Attach a file">📎</button>
         <input type="file" id="file-input" class="hidden" />
-        <input
-          type="text"
-          id="prompt-input"
-          placeholder="Ask Aperture…"
-        />
+        <input type="text" id="prompt-input" placeholder="Ask Aperture…" maxlength="4000" />
         <button id="prompt-mic-btn" class="icon-btn" title="Speak your prompt">🎤</button>
         <button id="send-btn" class="primary-btn">Send</button>
       </div>
@@ -169,44 +202,94 @@
     </main>
   </section>
 
-  <!-- ===================== ELEVATION MODAL (for code-file uploads) ===================== -->
-  <div id="elevate-modal" class="modal-overlay hidden">
+  <!-- ===================== PASSWORD CONFIRMATION (code files, removing face, deleting account) ===================== -->
+  <div id="pw-modal" class="modal-overlay hidden">
     <div class="modal-card">
-      <h3>Verification required</h3>
-      <p id="elevate-reason" class="modal-text"></p>
-      <input type="password" id="elevate-password-input" placeholder="Enter password" />
+      <h3 id="pw-title">Confirm your password</h3>
+      <p id="pw-text" class="modal-text"></p>
+      <input type="password" id="pw-input" placeholder="Your password" autocomplete="current-password" />
+      <p id="pw-error" class="error-text"></p>
       <div class="modal-actions">
-        <button id="elevate-cancel-btn" class="ghost-btn">Cancel</button>
-        <button id="elevate-confirm-btn" class="primary-btn">Verify &amp; upload</button>
-      </div>
-      <p id="elevate-error" class="error-text"></p>
-    </div>
-  </div>
-
-  <!-- ===================== ADD ANOTHER FACE MODAL ===================== -->
-  <div id="add-face-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h3>Add another face</h3>
-      <p class="modal-text">Have the new person position their face in the frame, then click Capture.</p>
-      <div class="camera-frame" style="width:180px; height:180px; margin: 0 auto 16px;">
-        <video id="add-face-feed" autoplay muted playsinline></video>
-      </div>
-      <p id="add-face-error" class="error-text"></p>
-      <div class="modal-actions">
-        <button id="add-face-cancel-btn" class="ghost-btn">Cancel</button>
-        <button id="add-face-capture-btn" class="primary-btn">Capture</button>
+        <button id="pw-cancel" class="ghost-btn" type="button">Cancel</button>
+        <button id="pw-confirm" class="primary-btn" type="button">Confirm</button>
       </div>
     </div>
   </div>
 
-  <!-- ===================== SECURITY ACTIVITY MODAL ===================== -->
+  <!-- ===================== SETTINGS ===================== -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-card wide">
+      <h3>Settings</h3>
+      <div class="modal-body">
+
+      <div class="settings-section">
+        <div class="settings-label">Account</div>
+        <div id="settings-account" class="settings-value"></div>
+        <div id="settings-usage" class="settings-note"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Face login</div>
+        <div id="settings-face-status" class="settings-value"></div>
+        <p class="settings-note">Lets you sign in with your face. It runs in your browser, so a determined person with a good photo of you could get past it. Leave it off if your chats are sensitive. Your password always works, and is always needed for sensitive actions.</p>
+        <div class="settings-buttons">
+          <button id="settings-face-setup-btn" class="ghost-btn" type="button">Set up face login</button>
+          <button id="settings-face-remove-btn" class="ghost-btn hidden" type="button">Turn off</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Change password</div>
+        <input type="password" id="settings-current-password" placeholder="Current password" autocomplete="current-password" />
+        <input type="password" id="settings-new-password" placeholder="New password (at least 8 characters)" autocomplete="new-password" />
+        <div class="settings-buttons">
+          <button id="settings-change-password-btn" class="ghost-btn" type="button">Update password</button>
+        </div>
+        <p id="settings-password-msg" class="settings-note"></p>
+      </div>
+
+      <div class="settings-section danger-zone">
+        <div class="settings-label">Delete account</div>
+        <p class="settings-note">Permanently deletes your chats, files, face data and security photos. This can't be undone.</p>
+        <div class="settings-buttons">
+          <button id="settings-delete-btn" class="ghost-btn danger-btn" type="button">Delete my account</button>
+        </div>
+      </div>
+
+      </div>
+
+      <div class="modal-actions">
+        <button id="settings-close-btn" class="primary-btn" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FACE LOGIN SET-UP ===================== -->
+  <div id="face-setup-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Set up face login</h3>
+      <p class="modal-text">Aperture stores a short list of numbers that describes your face (not your photo) and uses it only to recognise you at sign-in. If someone fails to sign in as you, a photo of them is saved to your Security activity. You can turn this off or delete everything at any time.</p>
+      <label class="checkbox-row"><input type="checkbox" id="face-consent" /> <span>I agree to this</span></label>
+      <div class="camera-frame small">
+        <video id="face-setup-feed" autoplay muted playsinline></video>
+      </div>
+      <input type="password" id="face-setup-password" placeholder="Your password" autocomplete="current-password" />
+      <p id="face-setup-error" class="error-text"></p>
+      <div class="modal-actions">
+        <button id="face-setup-cancel" class="ghost-btn" type="button">Cancel</button>
+        <button id="face-setup-capture" class="primary-btn" type="button">Capture my face</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SECURITY ACTIVITY ===================== -->
   <div id="security-log-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="width: min(600px, 94vw); max-height: 80vh; overflow-y: auto;">
+    <div class="modal-card wide">
       <h3>Security activity</h3>
-      <p class="modal-text">Camera captures from failed logins and monitoring mismatches.</p>
-      <div id="security-log-list" style="display:flex; flex-direction:column; gap:12px; margin: 16px 0;"></div>
+      <p class="modal-text">Photos saved when someone failed to sign in as you with a face, or a different face appeared while monitoring. Only you can see these.</p>
+      <div class="modal-body"><div id="security-log-list" class="security-log-list"></div></div>
       <div class="modal-actions">
-        <button id="security-log-close-btn" class="ghost-btn">Close</button>
+        <button id="security-log-close-btn" class="ghost-btn" type="button">Close</button>
       </div>
     </div>
   </div>

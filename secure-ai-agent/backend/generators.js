@@ -5,6 +5,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const PDFDocument = require("pdfkit");
@@ -25,6 +26,10 @@ const CODE_EXTENSIONS = new Set([
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// Download links are only as private as their file names, so each name ends in
+// 12 random hex characters that nobody can guess.
+const randomSuffix = () => crypto.randomBytes(6).toString("hex");
 
 function safeFileName(name, fallback) {
   const base = path
@@ -122,7 +127,7 @@ async function buildPdf(data, outDir) {
   if (sections.length === 0) throw new Error("Model returned no sections.");
 
   const title = String(data.title || "Document");
-  const storedName = `${safeFileName(title, "document")}-${Date.now()}.pdf`;
+  const storedName = `${safeFileName(title, "document")}-${randomSuffix()}.pdf`;
   const filePath = path.join(outDir, storedName);
 
   await new Promise((resolve, reject) => {
@@ -160,7 +165,7 @@ async function buildPpt(data, outDir) {
   if (slides.length === 0) throw new Error("Model returned no slides.");
 
   const title = String(data.title || "Presentation");
-  const storedName = `${safeFileName(title, "presentation")}-${Date.now()}.pptx`;
+  const storedName = `${safeFileName(title, "presentation")}-${randomSuffix()}.pptx`;
   const filePath = path.join(outDir, storedName);
 
   const pptx = new PptxGenJS();
@@ -212,7 +217,7 @@ async function buildCode(data, outDir) {
   const ext = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
   if (!CODE_EXTENSIONS.has(ext)) name = `${name}.txt`;
 
-  const storedName = `${Date.now()}-${name}`;
+  const storedName = `${randomSuffix()}-${name}`;
   fs.writeFileSync(path.join(outDir, storedName), code.slice(0, MAX_FILE_CHARS), "utf-8");
 
   return {
@@ -229,7 +234,7 @@ async function buildZip(data, outDir) {
   if (files.length === 0) throw new Error("Model returned no files.");
 
   const baseName = safeFileName(String(data.zipName || "project").replace(/\.zip$/i, ""), "project");
-  const storedName = `${baseName}-${Date.now()}.zip`;
+  const storedName = `${baseName}-${randomSuffix()}.zip`;
   const zipPath = path.join(outDir, storedName);
 
   await new Promise((resolve, reject) => {
@@ -255,7 +260,7 @@ const BUILDERS = { pdf: buildPdf, ppt: buildPpt, code: buildCode, zip: buildZip 
 // Routes
 // ---------------------------------------------------------------------------
 
-function registerCreateRoutes(app, { db, requireAuth, uploadDir }) {
+function registerCreateRoutes(app, { db, requireAuth, uploadDir, takeQuota }) {
   const outDir = path.join(uploadDir, "created-files");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
@@ -282,8 +287,15 @@ function registerCreateRoutes(app, { db, requireAuth, uploadDir }) {
       return res.status(400).json({ error: "prompt and chatId are required." });
     }
 
-    const chat = db.prepare("SELECT id FROM chats WHERE id = ?").get(chatId);
+    if (typeof prompt !== "string" || prompt.length > 4000) {
+      return res.status(400).json({ error: "Please keep your request under 4000 characters." });
+    }
+
+    // The chat must belong to the signed-in user.
+    const chat = db.prepare("SELECT id FROM chats WHERE id = ? AND user_id = ?").get(chatId, req.user.id);
     if (!chat) return res.status(404).json({ error: "Chat not found." });
+
+    if (!takeQuota(req, res)) return;
 
     try {
       const data = await askModelForJson(PROMPTS[type](prompt));
